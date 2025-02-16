@@ -3,79 +3,72 @@
 {% block title %}Cadastro - Sistema de Agendamento{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header">
-            <h2>Cadastro no Sistema</h2>
-        </div>
-        <div class="card-body">
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-info">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            <form method="POST">
-                <div class="form-group">
-                    <label>Tipo de Usuário:</label>
-                    <select name="tipo_usuario" class="form-control" onchange="mostrarCamposPaciente(this.value)" required>
-                        <option value="">Selecione...</option>
-                        <option value="paciente">Paciente</option>
-                        <option value="recepcionista">Recepcionista</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Nome de Usuário:</label>
-                    <input type="text" name="username" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Senha:</label>
-                    <input type="password" name="password" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Nome Completo:</label>
-                    <input type="text" name="nome" class="form-control" required>
-                </div>
+<h2>Cadastro no Sistema</h2>
 
-                <div class="form-group">
-                    <label>E-mail:</label>
-                    <input type="email" name="email" class="form-control" required>
-                </div>
-                
-                <div id="campos-paciente" class="campos-paciente">
-                    <div class="form-group">
-                        <label>CPF:</label>
-                        <input type="text" name="cpf" class="form-control" maxlength="11">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Data de Nascimento:</label>
-                        <input type="date" name="data_nascimento" class="form-control">
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Cadastrar</button>
-                <a href="{{ url_for('login') }}" class="btn btn-secondary">Voltar para Login</a>
-            </form>
-        </div>
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+            <p><strong>{{ message }}</strong></p>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<form method="POST">
+    <p>
+        <label>Tipo de Usuário:</label><br>
+        <select name="tipo_usuario" onchange="mostrarCamposPaciente(this.value)" required>
+            <option value="">Selecione...</option>
+            <option value="paciente">Paciente</option>
+            <option value="recepcionista">Recepcionista</option>
+        </select>
+    </p>
+    
+    <p>
+        <label>Nome de Usuário:</label><br>
+        <input type="text" name="username" required>
+    </p>
+    
+    <p>
+        <label>Senha:</label><br>
+        <input type="password" name="password" required>
+    </p>
+    
+    <p>
+        <label>Nome Completo:</label><br>
+        <input type="text" name="nome" required>
+    </p>
+
+    <p>
+        <label>E-mail:</label><br>
+        <input type="email" name="email" required>
+    </p>
+    
+    <div id="campos-paciente" style="display: none;">
+        <p>
+            <label>CPF:</label><br>
+            <input type="text" name="cpf" maxlength="11">
+        </p>
+        
+        <p>
+            <label>Data de Nascimento:</label><br>
+            <input type="date" name="data_nascimento">
+        </p>
     </div>
-</div>
+    
+    <button type="submit">Cadastrar</button>
+    <a href="{{ url_for('login') }}">Voltar para Login</a>
+</form>
 
 <script>
-    function mostrarCamposPaciente(tipo) {
-        document.getElementById('campos-paciente').style.display = 
-            tipo === 'paciente' ? 'block' : 'none';
-            
-        // Atualizar required dos campos
-        const camposPaciente = document.querySelectorAll('#campos-paciente input');
-        camposPaciente.forEach(campo => {
-            campo.required = (tipo === 'paciente');
-        });
-    }
+function mostrarCamposPaciente(tipo) {
+    document.getElementById('campos-paciente').style.display = 
+        tipo === 'paciente' ? 'block' : 'none';
+        
+    // Atualizar required dos campos
+    const camposPaciente = document.querySelectorAll('#campos-paciente input');
+    camposPaciente.forEach(campo => {
+        campo.required = (tipo === 'paciente');
+    });
+}
 </script>
 {% endblock %} 

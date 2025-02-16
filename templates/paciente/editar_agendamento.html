@@ -1,17 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Agendar Exame{% endblock %}
+{% block title %}Editar Agendamento{% endblock %}
 
 {% block navigation %}
 <ul>
-    <li><a href="{{ url_for('dashboard_paciente', user_id=user_id) }}">Dashboard</a></li>
-    <li><a href="{{ url_for('agendar_exame_paciente', user_id=user_id) }}">Agendar Exame</a></li>
-    <li><a href="{{ url_for('logout') }}">Sair</a></li>
+    <li><a href="{{ url_for('dashboard_paciente') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('agendar_exame_paciente') }}">Agendar Exame</a></li>
 </ul>
 {% endblock %}
 
 {% block content %}
-<h2>Agendar Novo Exame</h2>
+<h2>Editar Agendamento</h2>
+
+{% if messages %}
+<p><strong>{{ messages }}</strong></p>
+{% endif %}
 
 <form method="POST">
     <p>
@@ -29,11 +32,12 @@
     <p>
         <label>Data e Hora:</label><br>
         <input type="datetime-local" name="data_hora" required
+               value="{{ agendamento.data_hora.strftime('%Y-%m-%dT%H:%M') }}"
                min="{{ now.strftime('%Y-%m-%dT%H:%M') }}"
                onchange="validarHorario(this)">
     </p>
     
-    <button type="submit">Agendar Exame</button>
+    <button type="submit">Atualizar Agendamento</button>
 </form>
 
 <script>

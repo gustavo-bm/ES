@@ -6,69 +6,62 @@
 
 {% block navigation %}
 <ul>
-    <li><a href="{{ url_for('dashboard_paciente') }}">Dashboard</a></li>
-    <li><a href="{{ url_for('agendar_exame_paciente') }}">Agendar Exame</a></li>
+    <li><a href="{{ url_for('dashboard_paciente', user_id=user_id) }}">Dashboard</a></li>
+    <li><a href="{{ url_for('agendar_exame_paciente', user_id=user_id) }}">Agendar Exame</a></li>
+    <li><a href="{{ url_for('logout') }}">Sair</a></li>
 </ul>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Meus Agendamentos</h2>
-    
-    <div class="mb-4">
-        <a href="{{ url_for('agendar_exame_paciente') }}" class="btn btn-primary">Agendar Novo Exame</a>
-    </div>
+<h2>Meus Agendamentos</h2>
 
-    {% if agendamentos %}
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Data/Hora</th>
-                    <th>Tipo de Exame</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for agendamento in agendamentos %}
-                <tr>
-                    <td>{{ agendamento.data_hora.strftime('%d/%m/%Y %H:%M') }}</td>
-                    <td>{{ agendamento.tipo_exame }}</td>
-                    <td>{{ agendamento.status }}</td>
-                    <td>
-                        {% if agendamento.status == 'agendado' %}
-                        <form action="{{ url_for('cancelar_agendamento_paciente', agendamento_id=agendamento.id) }}" method="POST" style="display: inline;">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
-                                Cancelar
-                            </button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <p>Você não possui agendamentos.</p>
-    {% endif %}
+<p><a href="{{ url_for('agendar_exame_paciente', user_id=user_id) }}">Agendar Novo Exame</a></p>
 
-    <h3 class="mt-4">Notificações</h3>
-    {% if notificacoes %}
-    <div class="list-group">
-        {% for notificacao in notificacoes %}
-        <div class="list-group-item">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">{{ notificacao.mensagem }}</h5>
-                <small>{{ notificacao.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-            </div>
-            <small class="text-muted">Status: {{ notificacao.status_envio }}</small>
-        </div>
+{% if agendamentos %}
+<table border="1">
+    <thead>
+        <tr>
+            <th>Data/Hora</th>
+            <th>Tipo de Exame</th>
+            <th>Status</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for agendamento in agendamentos %}
+        <tr>
+            <td>{{ agendamento.data_hora.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>{{ agendamento.tipo_exame }}</td>
+            <td>{{ agendamento.status }}</td>
+            <td>
+                {% if agendamento.status == 'agendado' %}
+                <form action="{{ url_for('cancelar_agendamento_paciente', user_id=user_id, agendamento_id=agendamento.id) }}" method="POST">
+                    <button type="submit" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
+                        Cancelar
+                    </button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
         {% endfor %}
-    </div>
-    {% else %}
-    <p>Você não possui notificações.</p>
-    {% endif %}
-</div>
+    </tbody>
+</table>
+{% else %}
+<p>Você não possui agendamentos.</p>
+{% endif %}
+
+<h3>Notificações</h3>
+{% if notificacoes %}
+<ul>
+    {% for notificacao in notificacoes %}
+    <li>
+        <strong>{{ notificacao.mensagem }}</strong><br>
+        Data: {{ notificacao.created_at.strftime('%d/%m/%Y %H:%M') }}<br>
+        Status: {{ notificacao.status_envio }}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>Você não possui notificações.</p>
+{% endif %}
 {% endblock %} 

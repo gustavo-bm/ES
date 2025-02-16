@@ -8,124 +8,6 @@ load_dotenv()
 
 def get_db_connection():
     try:
-        # Primeiro conecta sem especificar o banco de dados
-        connection = mysql.connector.connect(
-            host=os.getenv('DB_HOST', 'localhost'),
-            user=os.getenv('DB_USER', 'root'),
-            password=os.getenv('DB_PASSWORD', '')
-        )
-        return connection
-    except Error as e:
-        print(f"Erro ao conectar ao MySQL: {e}")
-        return None
-
-def init_db():
-    connection = get_db_connection()
-    if connection:
-        try:
-            cursor = connection.cursor()
-            
-            # Criar o banco de dados se não existir
-            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {os.getenv('DB_NAME', 'medical_appointments')}")
-            cursor.execute(f"USE {os.getenv('DB_NAME', 'medical_appointments')}")
-            
-            # Criar tabela de usuários se não existir
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    username VARCHAR(100) NOT NULL UNIQUE,
-                    password VARCHAR(255) NOT NULL,
-                    nome VARCHAR(100) NOT NULL,
-                    email VARCHAR(255) NOT NULL UNIQUE,
-                    tipo_usuario ENUM('paciente', 'recepcionista') NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Criar tabela de pacientes se não existir
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pacientes (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    cpf VARCHAR(11) UNIQUE NOT NULL,
-                    data_nascimento DATE NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                )
-            ''')
-            
-            # Criar tabela de exames se não existir
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS exames (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    tipo_exame VARCHAR(100) NOT NULL,
-                    data_hora DATETIME NOT NULL,
-                    resultado TEXT,
-                    status ENUM('agendado', 'confirmado', 'realizado', 'cancelado') DEFAULT 'agendado',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Criar tabela de agendamentos se não existir
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS agendamentos (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    paciente_id INT NOT NULL,
-                    exame_id INT NOT NULL,
-                    data_hora DATETIME NOT NULL,
-                    status ENUM('agendado', 'confirmado', 'realizado', 'cancelado') DEFAULT 'agendado',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-                    FOREIGN KEY (exame_id) REFERENCES exames(id) ON DELETE CASCADE
-                )
-            ''')
-            
-            # Criar tabela de histórico de resultados se não existir
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS historico_resultados (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    paciente_id INT NOT NULL,
-                    exame_id INT NOT NULL,
-                    resultado TEXT NOT NULL,
-                    data_resultado TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-                    FOREIGN KEY (exame_id) REFERENCES exames(id) ON DELETE CASCADE
-                )
-            ''')
-            
-            # Criar tabela de notificações se não existir
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS notificacoes (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    paciente_id INT NOT NULL,
-                    mensagem TEXT NOT NULL,
-                    email_destino VARCHAR(255) NOT NULL,
-                    status_envio ENUM('pendente', 'enviado', 'erro') DEFAULT 'pendente',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
-                )
-            ''')
-            
-            # Criar tabela de recepcionistas se não existir
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS recepcionistas (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                )
-            ''')
-            
-            connection.commit()
-            print("Banco de dados verificado e atualizado com sucesso!")
-        except Error as e:
-            print(f"Erro ao inicializar o banco de dados: {e}")
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
-
-def get_db_connection_with_database():
-    try:
         connection = mysql.connector.connect(
             host=os.getenv('DB_HOST', 'localhost'),
             user=os.getenv('DB_USER', 'root'),
@@ -137,9 +19,8 @@ def get_db_connection_with_database():
         print(f"Erro ao conectar ao MySQL: {e}")
         return None
 
-# Funções para Usuários
 def criar_usuario(username, password, nome, email, tipo_usuario):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
@@ -156,9 +37,8 @@ def criar_usuario(username, password, nome, email, tipo_usuario):
             cursor.close()
             conn.close()
 
-# Funções para Pacientes
 def criar_paciente(user_id, cpf, data_nascimento):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
@@ -176,7 +56,7 @@ def criar_paciente(user_id, cpf, data_nascimento):
             conn.close()
 
 def get_paciente_by_user_id(user_id):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
@@ -194,13 +74,11 @@ def get_paciente_by_user_id(user_id):
             cursor.close()
             conn.close()
 
-# Funções para Agendamentos
 def verificar_disponibilidade(data_hora):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
-            # Verifica se já existe agendamento no mesmo horário
             cursor.execute('''
                 SELECT COUNT(*) as total
                 FROM agendamentos a
@@ -217,16 +95,14 @@ def verificar_disponibilidade(data_hora):
             conn.close()
 
 def agendar_exame(paciente_id, tipo_exame, data_hora):
-    # Primeiro verifica se o horário está disponível
     if not verificar_disponibilidade(data_hora):
         return False
         
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
             
-            # Buscar email do paciente
             cursor.execute('''
                 SELECT u.email 
                 FROM users u 
@@ -239,20 +115,17 @@ def agendar_exame(paciente_id, tipo_exame, data_hora):
             if not email_paciente:
                 return False
             
-            # Criar o exame
             cursor.execute('''
                 INSERT INTO exames (tipo_exame, data_hora, status)
                 VALUES (%s, %s, 'agendado')
             ''', (tipo_exame, data_hora))
             exame_id = cursor.lastrowid
             
-            # Criar o agendamento
             cursor.execute('''
                 INSERT INTO agendamentos (paciente_id, exame_id, data_hora, status)
                 VALUES (%s, %s, %s, 'agendado')
             ''', (paciente_id, exame_id, data_hora))
             
-            # Criar notificação de confirmação
             mensagem = f'Seu exame de {tipo_exame} foi agendado para {data_hora.strftime("%d/%m/%Y às %H:%M")}'
             cursor.execute('''
                 INSERT INTO notificacoes (paciente_id, mensagem, email_destino, status_envio)
@@ -269,7 +142,7 @@ def agendar_exame(paciente_id, tipo_exame, data_hora):
             conn.close()
 
 def get_agendamentos_paciente(paciente_id):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
@@ -289,12 +162,11 @@ def get_agendamentos_paciente(paciente_id):
             conn.close()
 
 def cancelar_agendamento(agendamento_id, paciente_id):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
             
-            # Buscar informações do agendamento
             cursor.execute('''
                 SELECT e.tipo_exame, a.data_hora
                 FROM agendamentos a
@@ -303,13 +175,11 @@ def cancelar_agendamento(agendamento_id, paciente_id):
             ''', (agendamento_id,))
             exame_info = cursor.fetchone()
             
-            # Atualizar status do agendamento
             cursor.execute('''
                 UPDATE agendamentos SET status = 'cancelado'
                 WHERE id = %s
             ''', (agendamento_id,))
             
-            # Atualizar status do exame
             cursor.execute('''
                 UPDATE exames e
                 INNER JOIN agendamentos a ON e.id = a.exame_id
@@ -317,7 +187,6 @@ def cancelar_agendamento(agendamento_id, paciente_id):
                 WHERE a.id = %s
             ''', (agendamento_id,))
             
-            # Criar notificação de cancelamento
             if exame_info:
                 cursor.execute('''
                     INSERT INTO notificacoes (paciente_id, mensagem, status_envio)
@@ -333,9 +202,8 @@ def cancelar_agendamento(agendamento_id, paciente_id):
             cursor.close()
             conn.close()
 
-# Funções para Recepcionista
 def criar_recepcionista(user_id, nome):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
@@ -353,7 +221,7 @@ def criar_recepcionista(user_id, nome):
             conn.close()
 
 def get_notificacoes_paciente(paciente_id):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
@@ -371,7 +239,7 @@ def get_notificacoes_paciente(paciente_id):
             conn.close()
 
 def get_todos_pacientes():
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
@@ -393,12 +261,11 @@ def editar_agendamento(agendamento_id, tipo_exame, data_hora):
     if not verificar_disponibilidade(data_hora):
         return False
         
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
             
-            # Atualizar o exame
             cursor.execute('''
                 UPDATE exames e
                 INNER JOIN agendamentos a ON e.id = a.exame_id
@@ -406,14 +273,12 @@ def editar_agendamento(agendamento_id, tipo_exame, data_hora):
                 WHERE a.id = %s
             ''', (tipo_exame, data_hora, agendamento_id))
             
-            # Atualizar o agendamento
             cursor.execute('''
                 UPDATE agendamentos
                 SET data_hora = %s
                 WHERE id = %s
             ''', (data_hora, agendamento_id))
             
-            # Criar notificação de alteração
             cursor.execute('''
                 INSERT INTO notificacoes (paciente_id, mensagem, status_envio)
                 VALUES ((SELECT paciente_id FROM agendamentos WHERE id = %s),
@@ -430,7 +295,7 @@ def editar_agendamento(agendamento_id, tipo_exame, data_hora):
             conn.close()
 
 def get_agendamento(agendamento_id):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
@@ -450,9 +315,8 @@ def get_agendamento(agendamento_id):
             cursor.close()
             conn.close()
 
-# Funções para Notificações
 def get_notificacoes_pendentes():
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
@@ -475,7 +339,7 @@ def get_notificacoes_pendentes():
             conn.close()
 
 def marcar_notificacao_enviada(notificacao_id):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
@@ -494,7 +358,7 @@ def marcar_notificacao_enviada(notificacao_id):
             conn.close()
 
 def get_agendamentos_proximas_24h():
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
@@ -522,7 +386,7 @@ def get_agendamentos_proximas_24h():
             conn.close()
 
 def criar_notificacao_lembrete(agendamento):
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
@@ -540,41 +404,23 @@ def criar_notificacao_lembrete(agendamento):
             cursor.close()
             conn.close()
 
-def atualizar_status_exame(exame_id, novo_status, resultado=None):
-    conn = get_db_connection_with_database()
+def atualizar_status_exame(exame_id, novo_status):
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
             
-            # Atualizar status do exame
-            if resultado:
-                cursor.execute('''
-                    UPDATE exames 
-                    SET status = %s, resultado = %s
-                    WHERE id = %s
-                ''', (novo_status, resultado, exame_id))
-            else:
-                cursor.execute('''
-                    UPDATE exames 
-                    SET status = %s
-                    WHERE id = %s
-                ''', (novo_status, exame_id))
+            cursor.execute('''
+                UPDATE exames 
+                SET status = %s
+                WHERE id = %s
+            ''', (novo_status, exame_id))
             
-            # Atualizar status do agendamento
             cursor.execute('''
                 UPDATE agendamentos 
                 SET status = %s
                 WHERE exame_id = %s
             ''', (novo_status, exame_id))
-            
-            # Se o exame foi realizado, adicionar ao histórico
-            if novo_status == 'realizado' and resultado:
-                cursor.execute('''
-                    INSERT INTO historico_resultados (paciente_id, exame_id, resultado)
-                    SELECT a.paciente_id, a.exame_id, %s
-                    FROM agendamentos a
-                    WHERE a.exame_id = %s
-                ''', (resultado, exame_id))
             
             conn.commit()
             return True
@@ -585,33 +431,13 @@ def atualizar_status_exame(exame_id, novo_status, resultado=None):
             cursor.close()
             conn.close()
 
-def get_historico_resultados(paciente_id):
-    conn = get_db_connection_with_database()
-    if conn:
-        try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute('''
-                SELECT hr.*, e.tipo_exame, e.data_hora
-                FROM historico_resultados hr
-                INNER JOIN exames e ON hr.exame_id = e.id
-                WHERE hr.paciente_id = %s
-                ORDER BY hr.data_resultado DESC
-            ''', (paciente_id,))
-            return cursor.fetchall()
-        except Error as e:
-            print(f"Erro ao buscar histórico de resultados: {e}")
-            return []
-        finally:
-            cursor.close()
-            conn.close()
-
 def get_agendamentos_recepcionista():
-    conn = get_db_connection_with_database()
+    conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
             cursor.execute('''
-                SELECT a.*, e.tipo_exame, e.resultado, e.status,
+                SELECT a.*, e.tipo_exame, e.status,
                        p.id as paciente_id, u.nome as nome_paciente
                 FROM agendamentos a
                 INNER JOIN exames e ON a.exame_id = e.id

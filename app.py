@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from db import (
-    get_db_connection_with_database, init_db, criar_usuario, criar_paciente, criar_recepcionista,
+    get_db_connection, criar_usuario, criar_paciente, criar_recepcionista,
     agendar_exame, cancelar_agendamento, get_agendamentos_paciente,
     get_paciente_by_user_id, get_notificacoes_paciente, get_notificacoes_pendentes,
     marcar_notificacao_enviada, get_agendamentos_proximas_24h, criar_notificacao_lembrete,
     get_todos_pacientes, editar_agendamento, get_agendamento, atualizar_status_exame,
-    get_historico_resultados, get_agendamentos_recepcionista
+    get_agendamentos_recepcionista
 )
 import mysql.connector
 from mysql.connector import Error
@@ -13,6 +13,7 @@ from datetime import datetime
 from functools import wraps
 import traceback
 import yagmail
+import smtplib
 from apscheduler.schedulers.background import BackgroundScheduler
 import os
 from dotenv import load_dotenv
@@ -22,46 +23,83 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_do_app'
 
-# Configuração do yagmail
-yag = yagmail.SMTP(os.getenv('EMAIL_USER'), os.getenv('EMAIL_PASSWORD'))
+def get_yagmail_instance():
+    try:
+        email = os.getenv('EMAIL_USER')
+        password = os.getenv('EMAIL_PASSWORD')
+        if not email or not password:
+            print("Erro: Credenciais de e-mail não configuradas")
+            return None
+            
+        return yagmail.SMTP(email, password)
+    except Exception as e:
+        print(f"Erro ao criar instância do yagmail: {e}")
+        return None
 
 def enviar_notificacoes():
-    notificacoes = get_notificacoes_pendentes()
-    for notif in notificacoes:
-        try:
-            yag.send(
-                to=notif['email'],
-                subject='Agendamento de Exame',
-                contents=notif['mensagem']
-            )
-            marcar_notificacao_enviada(notif['id'])
-        except Exception as e:
-            print(f"Erro ao enviar e-mail: {e}")
+    try:
+        notificacoes = get_notificacoes_pendentes()
+        if not notificacoes:
+            return
+            
+        yag = get_yagmail_instance()
+        if not yag:
+            print("Não foi possível inicializar o serviço de e-mail")
+            return
+            
+        for notif in notificacoes:
+            try:
+                if not notif.get('email'):
+                    print(f"E-mail não encontrado para notificação {notif.get('id')}")
+                    continue
+                    
+                yag.send(
+                    to=notif['email'],
+                    subject='Agendamento de Exame',
+                    contents=notif['mensagem']
+                )
+                marcar_notificacao_enviada(notif['id'])
+                print(f"E-mail enviado com sucesso para {notif['email']}")
+                
+            except smtplib.SMTPException as e:
+                print(f"Erro SMTP ao enviar e-mail para {notif.get('email')}: {e}")
+            except Exception as e:
+                print(f"Erro ao enviar e-mail para {notif.get('email')}: {e}")
+                
+    except Exception as e:
+        print(f"Erro geral no processo de envio de notificações: {e}")
+    finally:
+        if 'yag' in locals():
+            yag.close()
 
 def verificar_agendamentos_24h():
-    agendamentos = get_agendamentos_proximas_24h()
-    for agend in agendamentos:
-        criar_notificacao_lembrete(agend)
+    try:
+        agendamentos = get_agendamentos_proximas_24h()
+        if not agendamentos:
+            return
+            
+        for agend in agendamentos:
+            try:
+                if not agend.get('email'):
+                    print(f"E-mail não encontrado para agendamento {agend.get('id')}")
+                    continue
+                    
+                criar_notificacao_lembrete(agend)
+                print(f"Lembrete criado com sucesso para {agend['email']}")
+                
+            except Exception as e:
+                print(f"Erro ao criar lembrete para {agend.get('email')}: {e}")
+                
+    except Exception as e:
+        print(f"Erro geral no processo de verificação de agendamentos: {e}")
 
-# Inicializar o scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(enviar_notificacoes, 'interval', minutes=5)
 scheduler.add_job(verificar_agendamentos_24h, 'interval', hours=1)
 scheduler.start()
 
-# Decorador para verificar se o usuário está logado
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
 @app.route('/')
 def index():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -70,7 +108,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        conn = get_db_connection_with_database()
+        conn = get_db_connection()
         if not conn:
             flash('Erro de conexão com o banco de dados')
             return render_template('login.html')
@@ -85,10 +123,10 @@ def login():
             user = cursor.fetchone()
             
             if user:
-                session['user_id'] = user['id']
-                session['nome'] = user['nome']
-                session['tipo_usuario'] = user['tipo_usuario']
-                return redirect(url_for('dashboard'))
+                if user['tipo_usuario'] == 'paciente':
+                    return redirect(url_for('dashboard_paciente', user_id=user['id']))
+                else:
+                    return redirect(url_for('dashboard_recepcionista'))
             
             flash('Usuário ou senha incorretos')
             
@@ -104,7 +142,6 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.clear()
     return redirect(url_for('login'))
 
 @app.route('/cadastro', methods=['GET', 'POST'])
@@ -116,7 +153,6 @@ def cadastro():
         email = request.form['email']
         tipo_usuario = request.form['tipo_usuario']
         
-        # Criar usuário
         user_id = criar_usuario(username, password, nome, email, tipo_usuario)
         
         if user_id:
@@ -128,8 +164,7 @@ def cadastro():
                     flash('Cadastro realizado com sucesso!')
                     return redirect(url_for('login'))
                 else:
-                    # Se falhar ao criar paciente, precisamos excluir o usuário
-                    conn = get_db_connection_with_database()
+                    conn = get_db_connection()
                     if conn:
                         cursor = conn.cursor()
                         cursor.execute('DELETE FROM users WHERE id = %s', (user_id,))
@@ -144,92 +179,25 @@ def cadastro():
     
     return render_template('cadastro.html')
 
-@app.route('/dashboard')
-def dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
-    conn = get_db_connection_with_database()
-    cursor = conn.cursor(dictionary=True)
-    
-    user_id = session['user_id']
-    tipo_usuario = session['tipo_usuario']
-    
-    if tipo_usuario == 'paciente':
-        # Primeiro, buscar o ID do paciente
-        cursor.execute('SELECT id FROM pacientes WHERE user_id = %s', (user_id,))
-        paciente = cursor.fetchone()
-        
-        if paciente:
-            # Buscar exames do paciente
-            cursor.execute('''
-                SELECT e.id, e.data_hora, e.tipo_exame, e.status
-                FROM exames e
-                INNER JOIN agendamentos a ON e.id = a.exame_id
-                WHERE a.paciente_id = %s
-                ORDER BY e.data_hora DESC
-            ''', (paciente['id'],))
-            exames = cursor.fetchall()
-            
-            # Buscar notificações do paciente
-            cursor.execute('''
-                SELECT id, mensagem, created_at, status_envio
-                FROM notificacoes
-                WHERE paciente_id = %s
-                ORDER BY created_at DESC
-            ''', (paciente['id'],))
-            notificacoes = cursor.fetchall()
-            
-            cursor.close()
-            conn.close()
-            
-            return render_template('paciente/dashboard.html', 
-                                exames=exames, 
-                                notificacoes=notificacoes)
-        
-    elif tipo_usuario == 'recepcionista':
-        cursor.execute('''
-            SELECT e.id, e.data_hora, e.tipo_exame, e.status,
-                   u.nome as nome_paciente
-            FROM exames e
-            INNER JOIN agendamentos a ON e.id = a.exame_id
-            INNER JOIN pacientes p ON a.paciente_id = p.id
-            INNER JOIN users u ON p.user_id = u.id
-            ORDER BY e.data_hora DESC
-        ''')
-        exames = cursor.fetchall()
-        
-        cursor.close()
-        conn.close()
-        
-        return render_template('recepcionista/dashboard.html', exames=exames)
-    
-    return redirect(url_for('login'))
-
-@app.route('/paciente/dashboard')
-def dashboard_paciente():
-    if 'user_id' not in session or session['tipo_usuario'] != 'paciente':
-        return redirect(url_for('login'))
-    
-    paciente = get_paciente_by_user_id(session['user_id'])
+@app.route('/paciente/dashboard/<int:user_id>')
+def dashboard_paciente(user_id):
+    paciente = get_paciente_by_user_id(user_id)
     if not paciente:
-        return redirect(url_for('logout'))
+        return redirect(url_for('login'))
     
     agendamentos = get_agendamentos_paciente(paciente['id'])
     notificacoes = get_notificacoes_paciente(paciente['id'])
     
     return render_template('paciente/dashboard.html', 
                          agendamentos=agendamentos,
-                         notificacoes=notificacoes)
+                         notificacoes=notificacoes,
+                         user_id=user_id)
 
-@app.route('/paciente/agendar', methods=['GET', 'POST'])
-def agendar_exame_paciente():
-    if 'user_id' not in session or session['tipo_usuario'] != 'paciente':
-        return redirect(url_for('login'))
-    
-    paciente = get_paciente_by_user_id(session['user_id'])
+@app.route('/paciente/agendar/<int:user_id>', methods=['GET', 'POST'])
+def agendar_exame_paciente(user_id):
+    paciente = get_paciente_by_user_id(user_id)
     if not paciente:
-        return redirect(url_for('logout'))
+        return redirect(url_for('login'))
     
     if request.method == 'POST':
         tipo_exame = request.form['tipo_exame']
@@ -237,47 +205,51 @@ def agendar_exame_paciente():
         
         if agendar_exame(paciente['id'], tipo_exame, data_hora):
             flash('Exame agendado com sucesso!')
-            return redirect(url_for('dashboard_paciente'))
+            return redirect(url_for('dashboard_paciente', user_id=user_id))
         else:
             flash('Erro ao agendar exame.')
     
-    return render_template('paciente/agendar.html')
+    return render_template('paciente/agendar.html', user_id=user_id, now=datetime.now())
 
-@app.route('/paciente/cancelar/<int:agendamento_id>', methods=['POST'])
-def cancelar_agendamento_paciente(agendamento_id):
-    if 'user_id' not in session or session['tipo_usuario'] != 'paciente':
-        return redirect(url_for('login'))
-    
-    paciente = get_paciente_by_user_id(session['user_id'])
+@app.route('/paciente/cancelar/<int:user_id>/<int:agendamento_id>', methods=['POST'])
+def cancelar_agendamento_paciente(user_id, agendamento_id):
+    paciente = get_paciente_by_user_id(user_id)
     if not paciente:
-        return redirect(url_for('logout'))
+        return redirect(url_for('login'))
     
     if cancelar_agendamento(agendamento_id, paciente['id']):
         flash('Agendamento cancelado com sucesso!')
     else:
         flash('Erro ao cancelar agendamento.')
     
-    return redirect(url_for('dashboard_paciente'))
+    return redirect(url_for('dashboard_paciente', user_id=user_id))
 
 @app.route('/recepcionista/dashboard')
-@login_required
 def dashboard_recepcionista():
-    if session['tipo_usuario'] != 'recepcionista':
-        return redirect(url_for('login'))
-    
     agendamentos = get_agendamentos_recepcionista()
     return render_template('recepcionista/dashboard.html', exames=agendamentos)
 
+@app.route('/recepcionista/agendar', methods=['GET', 'POST'])
+def agendar_exame_recepcionista():
+    if request.method == 'POST':
+        paciente_id = request.form['paciente_id']
+        tipo_exame = request.form['tipo_exame']
+        data_hora = datetime.strptime(request.form['data_hora'], '%Y-%m-%dT%H:%M')
+        
+        if agendar_exame(paciente_id, tipo_exame, data_hora):
+            flash('Exame agendado com sucesso!', 'success')
+            return redirect(url_for('dashboard_recepcionista'))
+        else:
+            flash('Erro ao agendar exame.', 'error')
+    
+    pacientes = get_todos_pacientes()
+    return render_template('recepcionista/agendar.html', pacientes=pacientes, now=datetime.now())
+
 @app.route('/recepcionista/atualizar_status/<int:exame_id>', methods=['POST'])
-@login_required
 def atualizar_status_exame_route(exame_id):
-    if session['tipo_usuario'] != 'recepcionista':
-        return redirect(url_for('login'))
-    
     novo_status = request.form.get('status')
-    resultado = request.form.get('resultado')
     
-    if atualizar_status_exame(exame_id, novo_status, resultado):
+    if atualizar_status_exame(exame_id, novo_status):
         flash('Status atualizado com sucesso!', 'success')
     else:
         flash('Erro ao atualizar status.', 'error')
@@ -285,11 +257,7 @@ def atualizar_status_exame_route(exame_id):
     return redirect(url_for('dashboard_recepcionista'))
 
 @app.route('/recepcionista/editar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
-@login_required
 def editar_agendamento_route(agendamento_id):
-    if session['tipo_usuario'] != 'recepcionista':
-        return redirect(url_for('login'))
-    
     if request.method == 'POST':
         tipo_exame = request.form['tipo_exame']
         data_hora = datetime.strptime(request.form['data_hora'], '%Y-%m-%dT%H:%M')
@@ -301,14 +269,10 @@ def editar_agendamento_route(agendamento_id):
             flash('Erro ao atualizar agendamento.', 'error')
     
     agendamento = get_agendamento(agendamento_id)
-    return render_template('recepcionista/editar_agendamento.html', agendamento=agendamento)
+    return render_template('recepcionista/editar_agendamento.html', agendamento=agendamento, now=datetime.now())
 
 @app.route('/recepcionista/cancelar/<int:agendamento_id>', methods=['POST'])
-@login_required
 def cancelar_agendamento_recepcionista(agendamento_id):
-    if session['tipo_usuario'] != 'recepcionista':
-        return redirect(url_for('login'))
-    
     agendamento = get_agendamento(agendamento_id)
     if agendamento and cancelar_agendamento(agendamento_id, agendamento['paciente_id']):
         flash('Agendamento cancelado com sucesso!', 'success')
@@ -317,23 +281,10 @@ def cancelar_agendamento_recepcionista(agendamento_id):
     
     return redirect(url_for('dashboard_recepcionista'))
 
-@app.route('/paciente/historico')
-@login_required
-def historico_paciente():
-    if session['tipo_usuario'] != 'paciente':
-        return redirect(url_for('login'))
-    
-    paciente = get_paciente_by_user_id(session['user_id'])
-    if not paciente:
-        return redirect(url_for('logout'))
-    
-    historico = get_historico_resultados(paciente['id'])
-    return render_template('paciente/historico.html', historico=historico)
-
 @app.route('/healthcheck')
 def healthcheck():
     try:
-        conn = get_db_connection_with_database()
+        conn = get_db_connection()
         if conn:
             conn.close()
             return jsonify({"status": "healthy", "database": "connected"}), 200
@@ -342,5 +293,4 @@ def healthcheck():
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True) 

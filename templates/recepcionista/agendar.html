@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Editar Agendamento{% endblock %}
+{% block title %}Agendar Exame{% endblock %}
 
 {% block navigation %}
 <ul>
@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<h2>Editar Agendamento</h2>
+<h2>Agendar Novo Exame</h2>
 
 {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -24,32 +24,35 @@
 <form method="POST">
     <p>
         <label>Paciente:</label><br>
-        <input type="text" value="{{ agendamento.nome_paciente }}" readonly>
+        <select name="paciente_id" required>
+            <option value="">Selecione o paciente...</option>
+            {% for paciente in pacientes %}
+                <option value="{{ paciente.id }}">{{ paciente.nome }} - CPF: {{ paciente.cpf }}</option>
+            {% endfor %}
+        </select>
     </p>
     
     <p>
         <label>Tipo de Exame:</label><br>
         <select name="tipo_exame" required>
             <option value="">Selecione o tipo de exame...</option>
-            <option value="Hemograma" {% if agendamento.tipo_exame == 'Hemograma' %}selected{% endif %}>Hemograma</option>
-            <option value="Glicemia" {% if agendamento.tipo_exame == 'Glicemia' %}selected{% endif %}>Glicemia</option>
-            <option value="Colesterol" {% if agendamento.tipo_exame == 'Colesterol' %}selected{% endif %}>Colesterol</option>
-            <option value="Triglicerídeos" {% if agendamento.tipo_exame == 'Triglicerídeos' %}selected{% endif %}>Triglicerídeos</option>
-            <option value="Ureia" {% if agendamento.tipo_exame == 'Ureia' %}selected{% endif %}>Ureia</option>
-            <option value="Creatinina" {% if agendamento.tipo_exame == 'Creatinina' %}selected{% endif %}>Creatinina</option>
+            <option value="Hemograma">Hemograma</option>
+            <option value="Glicemia">Glicemia</option>
+            <option value="Colesterol">Colesterol</option>
+            <option value="Triglicerídeos">Triglicerídeos</option>
+            <option value="Ureia">Ureia</option>
+            <option value="Creatinina">Creatinina</option>
         </select>
     </p>
     
     <p>
         <label>Data e Hora:</label><br>
         <input type="datetime-local" name="data_hora" required
-               value="{{ agendamento.data_hora.strftime('%Y-%m-%dT%H:%M') }}"
                min="{{ now.strftime('%Y-%m-%dT%H:%M') }}"
                onchange="validarHorario(this)">
     </p>
     
-    <button type="submit">Salvar Alterações</button>
-    <a href="{{ url_for('dashboard_recepcionista') }}">Cancelar</a>
+    <button type="submit">Agendar Exame</button>
 </form>
 
 <script>
