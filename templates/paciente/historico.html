@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Resultados{% endblock %}
+
+{% block header_title %}Meu Histórico de Resultados{% endblock %}
+
+{% block navigation %}
+<ul>
+    <li><a href="{{ url_for('dashboard_paciente') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('agendar_exame_paciente') }}">Agendar Exame</a></li>
+    <li><a href="{{ url_for('historico_paciente') }}">Histórico</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Histórico de Resultados</h2>
+
+    {% if historico %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data do Exame</th>
+                    <th>Tipo de Exame</th>
+                    <th>Resultado</th>
+                    <th>Data do Resultado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for resultado in historico %}
+                <tr>
+                    <td>{{ resultado.data_hora.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>{{ resultado.tipo_exame }}</td>
+                    <td>{{ resultado.resultado }}</td>
+                    <td>{{ resultado.data_resultado.strftime('%d/%m/%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        Você ainda não possui resultados de exames registrados.
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

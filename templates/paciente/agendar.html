@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Agendar Exame{% endblock %}
+
+{% block header_title %}Agendar Novo Exame{% endblock %}
+
+{% block navigation %}
+<ul>
+    <li><a href="{{ url_for('dashboard_paciente') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('agendar_exame_paciente') }}">Agendar Exame</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Agendar Novo Exame</h2>
+    <form method="POST" action="{{ url_for('agendar_exame_paciente') }}">
+        <div class="form-group">
+            <label for="tipo_exame">Tipo de Exame:</label>
+            <select id="tipo_exame" name="tipo_exame" required>
+                <option value="">Selecione o tipo de exame...</option>
+                <option value="Hemograma">Hemograma</option>
+                <option value="Glicemia">Glicemia</option>
+                <option value="Colesterol">Colesterol</option>
+                <option value="Triglicerídeos">Triglicerídeos</option>
+                <option value="Ureia">Ureia</option>
+                <option value="Creatinina">Creatinina</option>
+                <option value="TSH">TSH</option>
+                <option value="T4 Livre">T4 Livre</option>
+                <option value="Ácido Úrico">Ácido Úrico</option>
+                <option value="TGO">TGO</option>
+                <option value="TGP">TGP</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="data_hora">Data e Hora:</label>
+            <input type="datetime-local" id="data_hora" name="data_hora" required>
+        </div>
+        
+        <button type="submit" class="button">Agendar Exame</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Instruções</h3>
+    <ul>
+        <li>Selecione o tipo de exame desejado</li>
+        <li>Escolha uma data e horário disponíveis</li>
+        <li>Alguns exames podem requerer preparação específica</li>
+        <li>Em caso de dúvidas, entre em contato com a recepção</li>
+    </ul>
+</div>
+
+{% block extra_scripts %}
+<script>
+    // Definir a data mínima como hoje
+    const dataHoraInput = document.getElementById('data_hora');
+    const hoje = new Date();
+    const hojeFormatado = hoje.toISOString().split('T')[0];
+    dataHoraInput.min = hojeFormatado + 'T08:00';
+    
+    // Definir horário de funcionamento (8h às 18h)
+    dataHoraInput.addEventListener('change', function() {
+        const selecionado = new Date(this.value);
+        const hora = selecionado.getHours();
+        
+        if (hora < 8 || hora >= 18) {
+            alert('Por favor, selecione um horário entre 8h e 18h.');
+            this.value = '';
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Agendamento{% endblock %}
+
+{% block header_title %}Editar Agendamento{% endblock %}
+
+{% block navigation %}
+<ul>
+    <li><a href="{{ url_for('dashboard_recepcionista') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('agendar_exame_recepcionista') }}">Cadastrar Agendamento</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>Editar Agendamento</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="form-group">
+                    <label>Paciente:</label>
+                    <input type="text" class="form-control" value="{{ agendamento.nome_paciente }}" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="tipo_exame">Tipo de Exame:</label>
+                    <select id="tipo_exame" name="tipo_exame" class="form-control" required>
+                        <option value="">Selecione o tipo de exame...</option>
+                        <option value="Hemograma" {% if agendamento.tipo_exame == 'Hemograma' %}selected{% endif %}>Hemograma</option>
+                        <option value="Glicemia" {% if agendamento.tipo_exame == 'Glicemia' %}selected{% endif %}>Glicemia</option>
+                        <option value="Colesterol" {% if agendamento.tipo_exame == 'Colesterol' %}selected{% endif %}>Colesterol</option>
+                        <option value="Triglicerídeos" {% if agendamento.tipo_exame == 'Triglicerídeos' %}selected{% endif %}>Triglicerídeos</option>
+                        <option value="Ureia" {% if agendamento.tipo_exame == 'Ureia' %}selected{% endif %}>Ureia</option>
+                        <option value="Creatinina" {% if agendamento.tipo_exame == 'Creatinina' %}selected{% endif %}>Creatinina</option>
+                        <option value="TSH" {% if agendamento.tipo_exame == 'TSH' %}selected{% endif %}>TSH</option>
+                        <option value="T4 Livre" {% if agendamento.tipo_exame == 'T4 Livre' %}selected{% endif %}>T4 Livre</option>
+                        <option value="Ácido Úrico" {% if agendamento.tipo_exame == 'Ácido Úrico' %}selected{% endif %}>Ácido Úrico</option>
+                        <option value="TGO" {% if agendamento.tipo_exame == 'TGO' %}selected{% endif %}>TGO</option>
+                        <option value="TGP" {% if agendamento.tipo_exame == 'TGP' %}selected{% endif %}>TGP</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="data_hora">Data e Hora:</label>
+                    <input type="datetime-local" id="data_hora" name="data_hora" class="form-control" 
+                           value="{{ agendamento.data_hora.strftime('%Y-%m-%dT%H:%M') }}" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                <a href="{{ url_for('dashboard_recepcionista') }}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_scripts %}
+<script>
+    // Definir a data mínima como hoje
+    const dataHoraInput = document.getElementById('data_hora');
+    const hoje = new Date();
+    const hojeFormatado = hoje.toISOString().split('T')[0];
+    dataHoraInput.min = hojeFormatado + 'T08:00';
+    
+    // Definir horário de funcionamento (8h às 18h)
+    dataHoraInput.addEventListener('change', function() {
+        const selecionado = new Date(this.value);
+        const hora = selecionado.getHours();
+        
+        if (hora < 8 || hora >= 18) {
+            alert('Por favor, selecione um horário entre 8h e 18h.');
+            this.value = '';
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 

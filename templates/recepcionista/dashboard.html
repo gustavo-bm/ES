@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard da Recepcionista{% endblock %}
+
+{% block header_title %}Área da Recepcionista{% endblock %}
+
+{% block navigation %}
+<ul>
+    <li><a href="{{ url_for('dashboard_recepcionista') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('agendar_exame_recepcionista') }}">Cadastrar Agendamento</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Gerenciamento de Agendamentos</h2>
+    
+    <div class="mb-4">
+        <a href="{{ url_for('agendar_exame_recepcionista') }}" class="btn btn-primary">Novo Agendamento</a>
+    </div>
+
+    {% if exames %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Paciente</th>
+                    <th>Data/Hora</th>
+                    <th>Tipo de Exame</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exame in exames %}
+                <tr>
+                    <td>{{ exame.nome_paciente }}</td>
+                    <td>{{ exame.data_hora.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>{{ exame.tipo_exame }}</td>
+                    <td>{{ exame.status }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="atualizarStatus('{{ exame.id }}')">
+                                Atualizar Status
+                            </button>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="editarAgendamento('{{ exame.id }}')">
+                                Editar
+                            </button>
+                            {% if exame.status == 'agendado' %}
+                            <form action="{{ url_for('cancelar_agendamento_recepcionista', agendamento_id=exame.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
+                                    Cancelar
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>Não há agendamentos cadastrados.</p>
+    {% endif %}
+</div>
+
+<!-- Modal para Atualizar Status -->
+<div class="modal fade" id="statusModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atualizar Status do Exame</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="statusForm" method="POST">
+                    <div class="form-group">
+                        <label>Novo Status:</label>
+                        <select name="status" class="form-control">
+                            <option value="agendado">Agendado</option>
+                            <option value="confirmado">Confirmado</option>
+                            <option value="realizado">Realizado</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Resultado (opcional):</label>
+                        <textarea name="resultado" class="form-control"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarStatus()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_scripts %}
+<script>
+function atualizarStatus(exameId) {
+    $('#statusModal').modal('show');
+    $('#statusForm').attr('action', `/recepcionista/atualizar_status/${exameId}`);
+}
+
+function salvarStatus() {
+    $('#statusForm').submit();
+}
+
+function editarAgendamento(agendamentoId) {
+    window.location.href = `/recepcionista/editar_agendamento/${agendamentoId}`;
+}
+</script>
+{% endblock %}
+{% endblock %} 
