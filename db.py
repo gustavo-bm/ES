@@ -104,13 +104,14 @@ def agendar_exame(paciente_id, tipo_exame, data_hora):
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT u.email 
+                SELECT u.email, u.nome 
                 FROM users u 
                 INNER JOIN pacientes p ON u.id = p.user_id 
                 WHERE p.id = %s
             ''', (paciente_id,))
             result = cursor.fetchone()
             email_paciente = result[0] if result else None
+            nome_paciente = result[1] if result else None
             
             if not email_paciente:
                 return False
@@ -126,11 +127,17 @@ def agendar_exame(paciente_id, tipo_exame, data_hora):
                 VALUES (%s, %s, %s, 'agendado')
             ''', (paciente_id, exame_id, data_hora))
             
-            mensagem = f'Seu exame de {tipo_exame} foi agendado para {data_hora.strftime("%d/%m/%Y às %H:%M")}'
+            # Mensagem de confirmação
+            mensagem_confirmacao = f'''Olá {nome_paciente},
+
+Seu exame de {tipo_exame} foi agendado com sucesso para {data_hora.strftime("%d/%m/%Y às %H:%M")}.
+
+Por favor, chegue com 15 minutos de antecedência.'''
+
             cursor.execute('''
                 INSERT INTO notificacoes (paciente_id, mensagem, email_destino, status_envio)
                 VALUES (%s, %s, %s, 'pendente')
-            ''', (paciente_id, mensagem, email_paciente))
+            ''', (paciente_id, mensagem_confirmacao, email_paciente))
             
             conn.commit()
             return True
@@ -321,14 +328,15 @@ def get_notificacoes_pendentes():
         try:
             cursor = conn.cursor(dictionary=True)
             cursor.execute('''
-                SELECT n.*, u.email, e.tipo_exame, e.data_hora
+                SELECT DISTINCT n.*, u.email, e.tipo_exame, e.data_hora, u.nome as nome_paciente
                 FROM notificacoes n
                 INNER JOIN pacientes p ON n.paciente_id = p.id
                 INNER JOIN users u ON p.user_id = u.id
-                INNER JOIN agendamentos a ON n.paciente_id = a.paciente_id
-                INNER JOIN exames e ON a.exame_id = e.id
+                LEFT JOIN agendamentos a ON n.paciente_id = a.paciente_id
+                LEFT JOIN exames e ON a.exame_id = e.id
                 WHERE n.status_envio = 'pendente'
-                AND e.data_hora > NOW()
+                AND (e.data_hora > NOW() OR e.data_hora IS NULL)
+                ORDER BY n.created_at DESC
             ''')
             return cursor.fetchall()
         except Error as e:
@@ -390,7 +398,23 @@ def criar_notificacao_lembrete(agendamento):
     if conn:
         try:
             cursor = conn.cursor()
-            mensagem = f'LEMBRETE: Seu exame de {agendamento["tipo_exame"]} está agendado para amanhã às {agendamento["data_hora"].strftime("%H:%M")}'
+            mensagem = f'''Olá {agendamento['nome_paciente']},
+
+LEMBRETE: Seu exame de {agendamento["tipo_exame"]} está agendado para amanhã às {agendamento["data_hora"].strftime("%H:%M")}.
+
+Local: Clínica de Exames
+Endereço: Rua dos Exames, 123
+Data: {agendamento["data_hora"].strftime("%d/%m/%Y")}
+Horário: {agendamento["data_hora"].strftime("%H:%M")}
+
+Lembretes importantes:
+- Chegue com 15 minutos de antecedência
+- Traga um documento com foto
+- Em caso de necessidade de cancelamento, avise com antecedência
+
+Atenciosamente,
+Equipe da Clínica'''
+
             cursor.execute('''
                 INSERT INTO notificacoes (paciente_id, mensagem, email_destino, status_envio)
                 VALUES (%s, %s, %s, 'pendente')

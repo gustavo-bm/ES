@@ -4,9 +4,9 @@
 
 {% block navigation %}
 <ul>
-    <li><a href="{{ url_for('dashboard_recepcionista') }}">Dashboard</a></li>
-    <li><a href="{{ url_for('agendar_exame_recepcionista') }}">Novo Agendamento</a></li>
-    <li><a href="{{ url_for('logout') }}">Sair</a></li>
+    <li><a href="{{ url_for('recepcionista.dashboard') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('recepcionista.agendar_exame') }}">Novo Agendamento</a></li>
+    <li><a href="{{ url_for('auth.logout') }}">Sair</a></li>
 </ul>
 {% endblock %}
 
@@ -49,7 +49,7 @@
     </p>
     
     <button type="submit">Salvar Alterações</button>
-    <a href="{{ url_for('dashboard_recepcionista') }}">Cancelar</a>
+    <a href="{{ url_for('recepcionista.dashboard') }}">Cancelar</a>
 </form>
 
 <script>

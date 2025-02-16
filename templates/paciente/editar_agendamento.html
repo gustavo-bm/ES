@@ -4,8 +4,9 @@
 
 {% block navigation %}
 <ul>
-    <li><a href="{{ url_for('dashboard_paciente') }}">Dashboard</a></li>
-    <li><a href="{{ url_for('agendar_exame_paciente') }}">Agendar Exame</a></li>
+    <li><a href="{{ url_for('paciente.dashboard', user_id=user_id) }}">Dashboard</a></li>
+    <li><a href="{{ url_for('paciente.agendar_exame', user_id=user_id) }}">Agendar Exame</a></li>
+    <li><a href="{{ url_for('auth.logout') }}">Sair</a></li>
 </ul>
 {% endblock %}
 

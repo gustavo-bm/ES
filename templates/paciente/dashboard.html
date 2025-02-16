@@ -6,16 +6,16 @@
 
 {% block navigation %}
 <ul>
-    <li><a href="{{ url_for('dashboard_paciente', user_id=user_id) }}">Dashboard</a></li>
-    <li><a href="{{ url_for('agendar_exame_paciente', user_id=user_id) }}">Agendar Exame</a></li>
-    <li><a href="{{ url_for('logout') }}">Sair</a></li>
+    <li><a href="{{ url_for('paciente.dashboard', user_id=user_id) }}">Dashboard</a></li>
+    <li><a href="{{ url_for('paciente.agendar_exame', user_id=user_id) }}">Agendar Exame</a></li>
+    <li><a href="{{ url_for('auth.logout') }}">Sair</a></li>
 </ul>
 {% endblock %}
 
 {% block content %}
 <h2>Meus Agendamentos</h2>
 
-<p><a href="{{ url_for('agendar_exame_paciente', user_id=user_id) }}">Agendar Novo Exame</a></p>
+<p><a href="{{ url_for('paciente.agendar_exame', user_id=user_id) }}">Agendar Novo Exame</a></p>
 
 {% if agendamentos %}
 <table border="1">
@@ -35,7 +35,7 @@
             <td>{{ agendamento.status }}</td>
             <td>
                 {% if agendamento.status == 'agendado' %}
-                <form action="{{ url_for('cancelar_agendamento_paciente', user_id=user_id, agendamento_id=agendamento.id) }}" method="POST">
+                <form action="{{ url_for('paciente.cancelar_agendamento', user_id=user_id, agendamento_id=agendamento.id) }}" method="POST">
                     <button type="submit" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
                         Cancelar
                     </button>

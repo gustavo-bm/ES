@@ -6,9 +6,9 @@
 
 {% block navigation %}
 <ul>
-    <li><a href="{{ url_for('dashboard_recepcionista') }}">Dashboard</a></li>
-    <li><a href="{{ url_for('agendar_exame_recepcionista') }}">Novo Agendamento</a></li>
-    <li><a href="{{ url_for('logout') }}">Sair</a></li>
+    <li><a href="{{ url_for('recepcionista.dashboard') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('recepcionista.agendar_exame') }}">Novo Agendamento</a></li>
+    <li><a href="{{ url_for('auth.logout') }}">Sair</a></li>
 </ul>
 {% endblock %}
 
@@ -46,11 +46,11 @@
                             Atualizar Status
                         </button>
                         
-                        <a href="{{ url_for('editar_agendamento_route', agendamento_id=exame.id) }}">
+                        <a href="{{ url_for('recepcionista.editar_agendamento', agendamento_id=exame.id) }}">
                             Editar
                         </a>
                         
-                        <form method="POST" action="{{ url_for('cancelar_agendamento_recepcionista', agendamento_id=exame.id) }}"
+                        <form method="POST" action="{{ url_for('recepcionista.cancelar_agendamento', agendamento_id=exame.id) }}"
                               style="display: inline;">
                             <button type="submit" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
                                 Cancelar
