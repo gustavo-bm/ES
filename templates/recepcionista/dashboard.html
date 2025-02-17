@@ -50,9 +50,9 @@
                             Editar
                         </a>
                         
-                        <form method="POST" action="{{ url_for('recepcionista.cancelar_agendamento', agendamento_id=exame.id) }}"
+                        <form method="POST" action="{{ url_for('recepcionista.cancelar_agendamento_route', agendamento_id=exame.id) }}"
                               style="display: inline;">
-                            <button type="submit" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
+                            <button type="submit" class="btn-cancelar" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
                                 Cancelar
                             </button>
                         </form>

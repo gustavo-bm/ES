@@ -3,7 +3,7 @@ from datetime import datetime
 from db import (
     get_agendamentos_recepcionista, get_todos_pacientes,
     agendar_exame, atualizar_status_exame, editar_agendamento as db_editar_agendamento,
-    get_agendamento, cancelar_agendamento
+    get_agendamento, cancelar_agendamento as db_cancelar_agendamento
 )
 
 recepcionista_bp = Blueprint('recepcionista', __name__, url_prefix='/recepcionista')
@@ -58,9 +58,9 @@ def editar_agendamento_route(agendamento_id):
                          now=datetime.now())
 
 @recepcionista_bp.route('/cancelar/<int:agendamento_id>', methods=['POST'])
-def cancelar_agendamento(agendamento_id):
+def cancelar_agendamento_route(agendamento_id):
     agendamento = get_agendamento(agendamento_id)
-    if agendamento and cancelar_agendamento(agendamento_id, agendamento['paciente_id']):
+    if agendamento and db_cancelar_agendamento(agendamento_id, agendamento['paciente_id']):
         flash('Agendamento cancelado com sucesso!', 'success')
     else:
         flash('Erro ao cancelar agendamento.', 'error')
