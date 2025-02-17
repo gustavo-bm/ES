@@ -4,6 +4,7 @@ from db import (
     get_paciente_by_user_id, get_agendamentos_paciente,
     get_notificacoes_paciente, agendar_exame as db_agendar_exame, cancelar_agendamento
 )
+from models import Paciente, Agendamento, Notificacao
 
 paciente_bp = Blueprint('paciente', __name__, url_prefix='/paciente')
 
@@ -13,8 +14,8 @@ def dashboard(user_id):
     if not paciente:
         return redirect(url_for('auth.login'))
     
-    agendamentos = get_agendamentos_paciente(paciente['id'])
-    notificacoes = get_notificacoes_paciente(paciente['id'])
+    agendamentos = get_agendamentos_paciente(paciente.id)
+    notificacoes = get_notificacoes_paciente(paciente.id)
     
     return render_template('paciente/dashboard.html', 
                          agendamentos=agendamentos,
@@ -31,7 +32,7 @@ def agendar_exame(user_id):
         tipo_exame = request.form['tipo_exame']
         data_hora = datetime.strptime(request.form['data_hora'], '%Y-%m-%dT%H:%M')
         
-        if db_agendar_exame(paciente['id'], tipo_exame, data_hora):
+        if db_agendar_exame(paciente.id, tipo_exame, data_hora):
             flash('Exame agendado com sucesso!')
             return redirect(url_for('paciente.dashboard', user_id=user_id))
         else:
@@ -45,7 +46,7 @@ def cancelar_agendamento(user_id, agendamento_id):
     if not paciente:
         return redirect(url_for('auth.login'))
     
-    if cancelar_agendamento(agendamento_id, paciente['id']):
+    if cancelar_agendamento(agendamento_id, paciente.id):
         flash('Agendamento cancelado com sucesso!')
     else:
         flash('Erro ao cancelar agendamento.')

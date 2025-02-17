@@ -3,6 +3,8 @@ from mysql.connector import Error
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+from email_utils import enviar_email
+from models import Paciente, Recepcionista, Agendamento, Notificacao, Exame
 
 load_dotenv()
 
@@ -61,12 +63,23 @@ def get_paciente_by_user_id(user_id):
         try:
             cursor = conn.cursor(dictionary=True)
             cursor.execute('''
-                SELECT p.*, u.nome 
+                SELECT p.*, u.nome, u.username, u.email 
                 FROM pacientes p 
                 JOIN users u ON p.user_id = u.id 
                 WHERE p.user_id = %s
             ''', (user_id,))
-            return cursor.fetchone()
+            result = cursor.fetchone()
+            if result:
+                return Paciente(
+                    id=result['id'],
+                    username=result['username'],
+                    nome=result['nome'],
+                    email=result['email'],
+                    cpf=result['cpf'],
+                    data_nascimento=result['data_nascimento'],
+                    user_id=result['user_id']
+                )
+            return None
         except Error as e:
             print(f"Erro ao buscar paciente: {e}")
             return None
@@ -95,7 +108,9 @@ def verificar_disponibilidade(data_hora):
             conn.close()
 
 def agendar_exame(paciente_id, tipo_exame, data_hora):
+    print(f"Iniciando agendamento de exame para paciente {paciente_id}")
     if not verificar_disponibilidade(data_hora):
+        print("Horário indisponível para agendamento")
         return False
         
     conn = get_db_connection()
@@ -103,45 +118,46 @@ def agendar_exame(paciente_id, tipo_exame, data_hora):
         try:
             cursor = conn.cursor()
             
-            cursor.execute('''
-                SELECT u.email, u.nome 
-                FROM users u 
-                INNER JOIN pacientes p ON u.id = p.user_id 
-                WHERE p.id = %s
-            ''', (paciente_id,))
-            result = cursor.fetchone()
-            email_paciente = result[0] if result else None
-            nome_paciente = result[1] if result else None
-            
-            if not email_paciente:
-                return False
-            
+            # Registrando exame
+            print("Registrando exame...")
             cursor.execute('''
                 INSERT INTO exames (tipo_exame, data_hora, status)
                 VALUES (%s, %s, 'agendado')
             ''', (tipo_exame, data_hora))
             exame_id = cursor.lastrowid
             
+            # Registrando agendamento
+            print("Registrando agendamento...")
             cursor.execute('''
                 INSERT INTO agendamentos (paciente_id, exame_id, data_hora, status)
                 VALUES (%s, %s, %s, 'agendado')
             ''', (paciente_id, exame_id, data_hora))
+            agendamento_id = cursor.lastrowid
             
-            # Mensagem de confirmação
-            mensagem_confirmacao = f'''Olá {nome_paciente},
-
-Seu exame de {tipo_exame} foi agendado com sucesso para {data_hora.strftime("%d/%m/%Y às %H:%M")}.
-
-Por favor, chegue com 15 minutos de antecedência.'''
-
-            cursor.execute('''
-                INSERT INTO notificacoes (paciente_id, mensagem, email_destino, status_envio)
-                VALUES (%s, %s, %s, 'pendente')
-            ''', (paciente_id, mensagem_confirmacao, email_paciente))
+            # Criando objetos do modelo
+            paciente = get_paciente_by_user_id(paciente_id)
+            if not paciente:
+                print(f"Paciente {paciente_id} não encontrado")
+                return False
+                
+            agendamento = Agendamento(
+                id=agendamento_id,
+                paciente=paciente,
+                tipo_exame=tipo_exame,
+                data_hora=data_hora
+            )
+            
+            # Criando e anexando observador
+            notificacao = Notificacao()
+            agendamento.attach(notificacao)
+            
+            # Notificando sobre o novo agendamento
+            agendamento.notify()
             
             conn.commit()
+            print("Agendamento concluído com sucesso")
             return True
-        except Error as e:
+        except Exception as e:
             print(f"Erro ao agendar exame: {e}")
             return False
         finally:
