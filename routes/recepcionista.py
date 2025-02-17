@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from datetime import datetime
 from db import (
     get_agendamentos_recepcionista, get_todos_pacientes,
-    agendar_exame, atualizar_status_exame, editar_agendamento,
+    agendar_exame, atualizar_status_exame, editar_agendamento as db_editar_agendamento,
     get_agendamento, cancelar_agendamento
 )
 
@@ -41,19 +41,21 @@ def atualizar_status(exame_id):
     return redirect(url_for('recepcionista.dashboard'))
 
 @recepcionista_bp.route('/editar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
-def editar_agendamento(agendamento_id):
+def editar_agendamento_route(agendamento_id):
     if request.method == 'POST':
         tipo_exame = request.form['tipo_exame']
         data_hora = datetime.strptime(request.form['data_hora'], '%Y-%m-%dT%H:%M')
         
-        if editar_agendamento(agendamento_id, tipo_exame, data_hora):
+        if db_editar_agendamento(agendamento_id, tipo_exame, data_hora):
             flash('Agendamento atualizado com sucesso!', 'success')
             return redirect(url_for('recepcionista.dashboard'))
         else:
             flash('Erro ao atualizar agendamento.', 'error')
     
     agendamento = get_agendamento(agendamento_id)
-    return render_template('recepcionista/editar_agendamento.html', agendamento=agendamento, now=datetime.now())
+    return render_template('recepcionista/editar_agendamento.html', 
+                         agendamento=agendamento, 
+                         now=datetime.now())
 
 @recepcionista_bp.route('/cancelar/<int:agendamento_id>', methods=['POST'])
 def cancelar_agendamento(agendamento_id):

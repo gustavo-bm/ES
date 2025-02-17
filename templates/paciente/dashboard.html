@@ -35,8 +35,8 @@
             <td>{{ agendamento.status }}</td>
             <td>
                 {% if agendamento.status == 'agendado' %}
-                <form action="{{ url_for('paciente.cancelar_agendamento', user_id=user_id, agendamento_id=agendamento.id) }}" method="POST">
-                    <button type="submit" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
+                <form method="POST" action="{{ url_for('paciente.cancelar_agendamento', user_id=user_id, agendamento_id=agendamento.id) }}" onsubmit="this.querySelector('button').disabled = true;">
+                    <button type="submit" class="btn-cancelar" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')">
                         Cancelar
                     </button>
                 </form>

@@ -188,16 +188,42 @@ def cancelar_agendamento(agendamento_id, paciente_id):
     conn = get_db_connection()
     if conn:
         try:
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             
+            # Buscar informações do agendamento
             cursor.execute('''
-                SELECT e.tipo_exame, a.data_hora
+                SELECT a.*, e.tipo_exame, e.data_hora, p.user_id
                 FROM agendamentos a
                 INNER JOIN exames e ON a.exame_id = e.id
-                WHERE a.id = %s
-            ''', (agendamento_id,))
-            exame_info = cursor.fetchone()
+                INNER JOIN pacientes p ON a.paciente_id = p.id
+                WHERE a.id = %s AND a.paciente_id = %s
+            ''', (agendamento_id, paciente_id))
+            agend_info = cursor.fetchone()
             
+            if not agend_info:
+                print("Agendamento não encontrado")
+                return False
+            
+            # Buscar paciente
+            paciente = get_paciente_by_user_id(agend_info['user_id'])
+            if not paciente:
+                print("Paciente não encontrado")
+                return False
+            
+            # Criar objeto de agendamento
+            agendamento = Agendamento(
+                id=agendamento_id,
+                paciente=paciente,
+                tipo_exame=agend_info['tipo_exame'],
+                data_hora=agend_info['data_hora'],
+                status='agendado'
+            )
+            
+            # Anexar observador
+            notificacao = Notificacao()
+            agendamento.attach(notificacao)
+            
+            # Atualizar status no banco
             cursor.execute('''
                 UPDATE agendamentos SET status = 'cancelado'
                 WHERE id = %s
@@ -210,15 +236,12 @@ def cancelar_agendamento(agendamento_id, paciente_id):
                 WHERE a.id = %s
             ''', (agendamento_id,))
             
-            if exame_info:
-                cursor.execute('''
-                    INSERT INTO notificacoes (paciente_id, mensagem, status_envio)
-                    VALUES (%s, %s, 'enviado')
-                ''', (paciente_id, f'Seu exame de {exame_info[0]} agendado para {exame_info[1].strftime("%d/%m/%Y às %H:%M")} foi cancelado'))
+            # Cancelar agendamento e notificar
+            agendamento.cancelar()
             
             conn.commit()
             return True
-        except Error as e:
+        except Exception as e:
             print(f"Erro ao cancelar agendamento: {e}")
             return False
         finally:
@@ -287,8 +310,23 @@ def editar_agendamento(agendamento_id, tipo_exame, data_hora):
     conn = get_db_connection()
     if conn:
         try:
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             
+            # Primeiro, buscar informações do paciente
+            cursor.execute('''
+                SELECT p.id as paciente_id, u.email, u.nome
+                FROM agendamentos a
+                JOIN pacientes p ON a.paciente_id = p.id
+                JOIN users u ON p.user_id = u.id
+                WHERE a.id = %s
+            ''', (agendamento_id,))
+            
+            paciente_info = cursor.fetchone()
+            if not paciente_info:
+                print("Paciente não encontrado")
+                return False
+            
+            # Atualizar exame
             cursor.execute('''
                 UPDATE exames e
                 INNER JOIN agendamentos a ON e.id = a.exame_id
@@ -296,17 +334,19 @@ def editar_agendamento(agendamento_id, tipo_exame, data_hora):
                 WHERE a.id = %s
             ''', (tipo_exame, data_hora, agendamento_id))
             
+            # Atualizar agendamento
             cursor.execute('''
                 UPDATE agendamentos
                 SET data_hora = %s
                 WHERE id = %s
             ''', (data_hora, agendamento_id))
             
+            # Criar notificação
+            mensagem = f'Seu exame de {tipo_exame} foi remarcado para {data_hora.strftime("%d/%m/%Y às %H:%M")}'
             cursor.execute('''
-                INSERT INTO notificacoes (paciente_id, mensagem, status_envio)
-                VALUES ((SELECT paciente_id FROM agendamentos WHERE id = %s),
-                        %s, 'pendente')
-            ''', (agendamento_id, f'Seu exame de {tipo_exame} foi remarcado para {data_hora.strftime("%d/%m/%Y às %H:%M")}'))
+                INSERT INTO notificacoes (paciente_id, mensagem, email_destino, status_envio)
+                VALUES (%s, %s, %s, 'pendente')
+            ''', (paciente_info['paciente_id'], mensagem, paciente_info['email']))
             
             conn.commit()
             return True

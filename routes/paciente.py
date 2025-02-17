@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from datetime import datetime
 from db import (
     get_paciente_by_user_id, get_agendamentos_paciente,
-    get_notificacoes_paciente, agendar_exame as db_agendar_exame, cancelar_agendamento
+    get_notificacoes_paciente, agendar_exame as db_agendar_exame, 
+    cancelar_agendamento as db_cancelar_agendamento
 )
 from models import Paciente, Agendamento, Notificacao
 
@@ -42,13 +43,28 @@ def agendar_exame(user_id):
 
 @paciente_bp.route('/cancelar/<int:user_id>/<int:agendamento_id>', methods=['POST'])
 def cancelar_agendamento(user_id, agendamento_id):
+    print(f"[DEBUG] Iniciando cancelamento - User ID: {user_id}, Agendamento ID: {agendamento_id}")
+    
+    # Verificar se o paciente existe
     paciente = get_paciente_by_user_id(user_id)
     if not paciente:
+        print("[DEBUG] Paciente não encontrado")
+        flash('Paciente não encontrado.')
         return redirect(url_for('auth.login'))
     
-    if cancelar_agendamento(agendamento_id, paciente.id):
-        flash('Agendamento cancelado com sucesso!')
-    else:
-        flash('Erro ao cancelar agendamento.')
-    
-    return redirect(url_for('paciente.dashboard', user_id=user_id)) 
+    try:
+        # Tentar cancelar o agendamento
+        if db_cancelar_agendamento(agendamento_id, paciente.id):
+            print("[DEBUG] Agendamento cancelado com sucesso")
+            flash('Agendamento cancelado com sucesso!')
+        else:
+            print("[DEBUG] Erro ao cancelar agendamento")
+            flash('Erro ao cancelar agendamento.')
+            
+        # Importante: Redirecionar apenas uma vez, no final da função
+        return redirect(url_for('paciente.dashboard', user_id=user_id))
+        
+    except Exception as e:
+        print(f"[DEBUG] Erro durante o cancelamento: {e}")
+        flash('Erro ao processar o cancelamento.')
+        return redirect(url_for('paciente.dashboard', user_id=user_id)) 

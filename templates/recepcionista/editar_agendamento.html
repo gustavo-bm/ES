@@ -31,12 +31,11 @@
         <label>Tipo de Exame:</label><br>
         <select name="tipo_exame" required>
             <option value="">Selecione o tipo de exame...</option>
-            <option value="Hemograma" {% if agendamento.tipo_exame == 'Hemograma' %}selected{% endif %}>Hemograma</option>
-            <option value="Glicemia" {% if agendamento.tipo_exame == 'Glicemia' %}selected{% endif %}>Glicemia</option>
-            <option value="Colesterol" {% if agendamento.tipo_exame == 'Colesterol' %}selected{% endif %}>Colesterol</option>
-            <option value="Triglicerídeos" {% if agendamento.tipo_exame == 'Triglicerídeos' %}selected{% endif %}>Triglicerídeos</option>
-            <option value="Ureia" {% if agendamento.tipo_exame == 'Ureia' %}selected{% endif %}>Ureia</option>
-            <option value="Creatinina" {% if agendamento.tipo_exame == 'Creatinina' %}selected{% endif %}>Creatinina</option>
+            <option value="Raio-X">Raio-X</option>
+            <option value="Ultrassonografia">Ultrassonografia</option>
+            <option value="Tomografia Computadorizada">Tomografia</option>
+            <option value="Ressonância Magnética">Ressonância Magnética</option>
+            <option value="Mamografia">Mamografia</option>
         </select>
     </p>
     
