@@ -1,0 +1,9 @@
+Flask==3.0.0
+mysql-connector-python==8.2.0
+python-dotenv==1.0.0
+yagmail==0.15.293
+APScheduler==3.10.4
+Werkzeug==3.0.1
+pytest==7.4.3
+cryptography==41.0.5
+email-validator==2.1.0.post1 
